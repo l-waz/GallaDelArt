@@ -171,9 +171,6 @@
         .status.aguardando\.entregador { background: var(--purple); color: white; }
         .status.a\.caminho { background: var(--accent); color: white; }
         
-        .status-pagamento.pago { background: var(--success); color: white; }
-        .status-pagamento.pendente { background: var(--danger); color: white; }
-        
         .refresh-btn {
             position: fixed;
             bottom: 20px;
@@ -231,7 +228,7 @@
         .modal-body p { margin-bottom: 12px; line-height: 1.6; }
         .modal-body strong { color: var(--accent); }
         .modal-footer { margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; }
-        #statusEntregaSelect, #statusPagamentoSelect, .modal-input {
+        #statusSelect, .modal-input {
             width: 100%;
             padding: 10px;
             border-radius: 8px;
@@ -315,27 +312,19 @@
                 <p><strong>Total:</strong> <span id="modalTotal"></span></p>
                 <p><strong>Pagamento:</strong> <span id="modalPagamento"></span></p>
                 <hr style="margin: 15px 0; border-color: #e2e8f0;">
-                
-                <label for="statusEntregaSelect" style="font-weight: bold; margin-bottom: 8px; display: block;">Status Entrega:</label>
-                <select id="statusEntregaSelect">
+                <label for="statusSelect" style="font-weight: bold; margin-bottom: 8px; display: block;">Alterar Status:</label>
+                <select id="statusSelect">
                     <option value="Pendente">Pendente</option>
                     <option value="Em separação">Em separação</option>
                     <option value="Aguardando entregador">Aguardando entregador</option>
                     <option value="A caminho">A caminho</option>
                     <option value="Entregue">Entregue</option>
                 </select>
-
-                <label for="statusPagamentoSelect" style="font-weight: bold; margin-bottom: 8px; display: block;">Status Pagamento:</label>
-                <select id="statusPagamentoSelect">
-                    <option value="Pendente">Pendente</option>
-                    <option value="Pago">Pago</option>
-                </select>
-
                 <input type="hidden" id="modalPedidoId">
             </div>
             <div class="modal-footer">
                 <button class="modal-btn btn-cancel" onclick="fecharModal('pedidoModal')">Cancelar</button>
-                <button class="modal-btn btn-save" id="btnSalvarStatus" onclick="salvarAlteracoesPedido()">Salvar Alterações</button>
+                <button class="modal-btn btn-save" id="btnSalvarStatus" onclick="atualizarStatus()">Salvar</button>
             </div>
         </div>
     </div>
@@ -360,123 +349,152 @@
     </div>
     
     <script>
-        const API_URL = 'https://script.google.com/macros/s/AKfycbweFtbPYe7KJfSuEy5w8dyPoFW7vWHVI3AGt5V3zAWvkddllHqz_KLzX-mEGyDwxpxKkQ/exec';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxeKl4iA-qnUpf2wlYalJw_EVv_jT8wCxEvGBZ-jT1gKini3446MMdfqsnoAjYSY4QEEA/exec';
         let pedidosCache = [];
-        let estoqueCache = [];
+        let estoqueCache = []; // Cache para produtos do estoque
         let vendasChart, produtosChart;
         let notifEnabled = true;
-
+        
+        function toggleTheme() { /* ...código sem alterações... */ }
+        function toggleNotif() { /* ...código sem alterações... */ }
+        function mudarTab(tab, e) { /* ...código sem alterações... */ }
+        
         async function carregarDados() {
             try {
-                document.getElementById('tabelaPedidos').innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando...</p></div>';
-                document.getElementById('tabelaEstoque').innerHTML = '<div class="loading"><div class="spinner"></div><p>Carregando...</p></div>';
-
                 await Promise.all([carregarPedidos(), carregarEstoque()]);
                 calcularStats();
                 criarGraficos();
             } catch (error) {
                 console.error('Erro geral ao carregar dados:', error);
-                document.getElementById('tabelaPedidos').innerHTML = `<p style="text-align:center;padding:30px;color:red;">Falha ao carregar pedidos. Verifique o console do navegador (F12) para mais detalhes.</p>`;
             }
         }
         
         async function carregarPedidos() {
-            const res = await fetch(`${API_URL}?action=getPedidos&_t=${Date.now()}`);
-            if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
-            const data = await res.json();
-            pedidosCache = data.pedidos || [];
-            
-            if (pedidosCache.length === 0) {
-                document.getElementById('tabelaPedidos').innerHTML = '<p style="text-align:center;padding:30px">Nenhum pedido</p>';
-                return;
-            }
-            
-            let html = '<table><thead><tr><th>ID</th><th>Horário</th><th>Cliente</th><th>Total</th><th>Status Entrega</th><th>Status Pagamento</th></tr></thead><tbody>';
-            pedidosCache.slice().reverse().slice(0, 20).forEach(p => {
-                const statusEntregaClass = (p.status || 'pendente').toLowerCase().replace(/ /g, '.');
-                const statusPagamentoClass = (p.statusPagamento || 'pendente').toLowerCase();
-                html += `<tr onclick="abrirModalPedido(${p.id})">
-                    <td>#${p.id}</td>
-                    <td>${new Date(p.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
-                    <td>${p.nome || 'Não identificado'}</td>
-                    <td>R$ ${(p.total || 0).toFixed(2)}</td>
-                    <td><span class="status ${statusEntregaClass}">${p.status || 'Pendente'}</span></td>
-                    <td><span class="status status-pagamento ${statusPagamentoClass}">${p.statusPagamento || 'Pendente'}</span></td>
-                </tr>`;
-            });
-            html += '</tbody></table>';
-            document.getElementById('tabelaPedidos').innerHTML = html;
+            try {
+                const res = await fetch(`${API_URL}?action=getPedidos&_t=${Date.now()}`);
+                const data = await res.json();
+                pedidosCache = data.pedidos || [];
+                
+                if (pedidosCache.length === 0) {
+                    document.getElementById('tabelaPedidos').innerHTML = '<p style="text-align:center;padding:30px">Nenhum pedido</p>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>ID</th><th>Horário</th><th>Cliente</th><th>Endereço</th><th>Total</th><th>Status</th></tr></thead><tbody>';
+                pedidosCache.slice().reverse().slice(0, 20).forEach(p => {
+                    const statusClass = (p.status || 'pendente').toLowerCase().replace(/ /g, '.');
+                    html += `<tr onclick="abrirModalPedido(${p.id})">
+                        <td>#${p.id}</td>
+                        <td>${new Date(p.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
+                        <td>${p.nome || 'Não identificado'}</td>
+                        <td>${p.endereco || 'Não informado'}</td>
+                        <td>R$ ${(p.total || 0).toFixed(2)}</td>
+                        <td><span class="status ${statusClass}">${p.status || 'Pendente'}</span></td>
+                    </tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('tabelaPedidos').innerHTML = html;
+            } catch(e) { console.error("Erro em carregarPedidos:", e); }
         }
         
-        function abrirModalPedido(pedidoId) {
-            const pedido = pedidosCache.find(p => p.id === pedidoId);
-            if (!pedido) return;
-
-            document.getElementById('modalTitle').textContent = `Detalhes do Pedido #${pedido.id}`;
-            document.getElementById('modalCliente').textContent = pedido.nome || 'Não identificado';
-            document.getElementById('modalTelefone').textContent = pedido.telefone || 'Não informado';
-            document.getElementById('modalEndereco').textContent = pedido.endereco || 'Não informado';
-            document.getElementById('modalProdutos').innerHTML = pedido.produto.replace(/\n/g, '<br>');
-            document.getElementById('modalTotal').textContent = `R$ ${(pedido.total || 0).toFixed(2)}`;
-            document.getElementById('modalPagamento').textContent = `${pedido.formaPagamento} (Troco: ${pedido.troco})`;
-            
-            document.getElementById('statusEntregaSelect').value = pedido.status || 'Pendente';
-            document.getElementById('statusPagamentoSelect').value = pedido.statusPagamento || 'Pendente';
-
-            document.getElementById('modalPedidoId').value = pedido.id;
-            document.getElementById('pedidoModal').style.display = 'flex';
+        // --- FUNÇÃO MODIFICADA ---
+        async function carregarEstoque() {
+            try {
+                const res = await fetch(`${API_URL}?action=getEstoque&_t=${Date.now()}`);
+                const data = await res.json();
+                estoqueCache = data.produtos || [];
+                
+                if (estoqueCache.length === 0) {
+                    document.getElementById('tabelaEstoque').innerHTML = '<p style="text-align:center;padding:30px">Sem produtos</p>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Preço</th><th>Qtd</th></tr></thead><tbody>';
+                estoqueCache.forEach(p => {
+                    const cor = p.quantidade < 5 ? 'color:var(--danger);font-weight:bold;' : '';
+                    // Adicionado onclick para abrir o novo modal de estoque
+                    html += `<tr onclick="abrirModalEstoque(${p.id}, '${p.nome.replace(/'/g, "\\'")}', ${p.quantidade})">
+                                <td>${p.id}</td>
+                                <td>${p.nome}</td>
+                                <td>R$ ${p.preco.toFixed(2)}</td>
+                                <td style="${cor}">${p.quantidade}</td>
+                             </tr>`;
+                });
+                html += '</tbody></table>';
+                document.getElementById('tabelaEstoque').innerHTML = html;
+                document.getElementById('produtosEstoque').textContent = estoqueCache.reduce((sum, p) => sum + p.quantidade, 0);
+            } catch(e) { console.error("Erro em carregarEstoque:", e); }
         }
 
+        // --- FUNÇÕES DE MODAL (PEDIDOS) ---
+        function abrirModalPedido(pedidoId) { /* ...código sem alterações... */ }
+        
         function fecharModal(modalId) {
             document.getElementById(modalId).style.display = 'none';
         }
 
-        async function salvarAlteracoesPedido() {
-            const pedidoId = document.getElementById('modalPedidoId').value;
-            const novoStatusEntrega = document.getElementById('statusEntregaSelect').value;
-            const novoStatusPagamento = document.getElementById('statusPagamentoSelect').value;
-            const btn = document.getElementById('btnSalvarStatus');
+        async function atualizarStatus() { /* ...código sem alterações... */ }
+
+        // --- NOVAS FUNÇÕES PARA O MODAL DE ESTOQUE ---
+        function abrirModalEstoque(id, nome, qtd) {
+            document.getElementById('modalProdutoNome').textContent = nome;
+            document.getElementById('quantidadeInput').value = qtd;
+            document.getElementById('modalProdutoId').value = id;
+            document.getElementById('estoqueModal').style.display = 'flex';
+        }
+
+        async function salvarEstoque() {
+            const produtoId = document.getElementById('modalProdutoId').value;
+            const novaQuantidade = document.getElementById('quantidadeInput').value;
+            const btn = document.getElementById('btnSalvarEstoque');
+            
+            if (novaQuantidade === '' || isNaN(novaQuantidade) || novaQuantidade < 0) {
+                alert('Por favor, insira uma quantidade válida.');
+                return;
+            }
+
             btn.textContent = 'Salvando...';
             btn.disabled = true;
 
             try {
-                const res = await fetch(`${API_URL}?action=updatePedido`, {
+                const res = await fetch(`${API_URL}?action=setEstoque`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain' },
-                    body: JSON.stringify({ 
-                        id: pedidoId, 
-                        status: novoStatusEntrega,
-                        statusPagamento: novoStatusPagamento 
-                    })
+                    body: JSON.stringify({ id: produtoId, quantidade: parseInt(novaQuantidade) })
                 });
                 const result = await res.json();
 
                 if (result.success) {
-                    fecharModal('pedidoModal');
-                    await carregarDados(); 
+                    fecharModal('estoqueModal');
+                    await carregarDados(); // Recarrega tudo para atualizar a tabela e os stats
                 } else {
-                    alert('Erro ao atualizar o pedido: ' + (result.error || 'Erro desconhecido'));
+                    alert('Erro ao atualizar o estoque: ' + (result.error || 'Erro desconhecido'));
                 }
             } catch (error) {
                 alert('Falha na comunicação com o servidor.');
-                console.error("Erro ao salvar alterações: ", error);
+                console.error("Erro ao salvar estoque: ", error);
             } finally {
-                btn.textContent = 'Salvar Alterações';
+                btn.textContent = 'Salvar';
                 btn.disabled = false;
             }
         }
         
-        async function carregarEstoque() { try { const res = await fetch(`${API_URL}?action=getEstoque&_t=${Date.now()}`); if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`); const data = await res.json(); estoqueCache = data.produtos || []; if (estoqueCache.length === 0) { document.getElementById('tabelaEstoque').innerHTML = '<p style="text-align:center;padding:30px">Sem produtos</p>'; return; } let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Preço</th><th>Qtd</th></tr></thead><tbody>'; estoqueCache.forEach(p => { const cor = p.quantidade < 5 ? 'color:var(--danger);font-weight:bold;' : ''; html += `<tr onclick="abrirModalEstoque(${p.id}, '${p.nome.replace(/'/g, "\\'")}', ${p.quantidade})"><td>${p.id}</td><td>${p.nome}</td><td>R$ ${p.preco.toFixed(2)}</td><td style="${cor}">${p.quantidade}</td></tr>`; }); html += '</tbody></table>'; document.getElementById('tabelaEstoque').innerHTML = html; document.getElementById('produtosEstoque').textContent = estoqueCache.reduce((sum, p) => sum + p.quantidade, 0); } catch(e) { console.error("Erro em carregarEstoque:", e); } }
-        function abrirModalEstoque(id, nome, qtd) { document.getElementById('modalProdutoNome').textContent = nome; document.getElementById('quantidadeInput').value = qtd; document.getElementById('modalProdutoId').value = id; document.getElementById('estoqueModal').style.display = 'flex'; }
-        async function salvarEstoque() { const produtoId = document.getElementById('modalProdutoId').value; const novaQuantidade = document.getElementById('quantidadeInput').value; const btn = document.getElementById('btnSalvarEstoque'); if (novaQuantidade === '' || isNaN(novaQuantidade) || novaQuantidade < 0) { alert('Por favor, insira uma quantidade válida.'); return; } btn.textContent = 'Salvando...'; btn.disabled = true; try { const res = await fetch(`${API_URL}?action=setEstoque`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ id: produtoId, quantidade: parseInt(novaQuantidade) }) }); const result = await res.json(); if (result.success) { fecharModal('estoqueModal'); await carregarDados(); } else { alert('Erro ao atualizar o estoque: ' + (result.error || 'Erro desconhecido')); } } catch (error) { alert('Falha na comunicação com o servidor.'); console.error("Erro ao salvar estoque: ", error); } finally { btn.textContent = 'Salvar'; btn.disabled = false; } }
-        function calcularStats() { const hoje = new Date(); hoje.setHours(0, 0, 0, 0); const pedidosHoje = pedidosCache.filter(p => { const d = new Date(p.data); d.setHours(0, 0, 0, 0); return d.getTime() === hoje.getTime(); }); const total = pedidosHoje.reduce((sum, p) => sum + (p.total || 0), 0); const ticket = pedidosHoje.length > 0 ? total / pedidosHoje.length : 0; document.getElementById('pedidosHoje').textContent = pedidosHoje.length; document.getElementById('faturamentoHoje').textContent = `R$ ${total.toFixed(2)}`; document.getElementById('ticketMedio').textContent = `R$ ${ticket.toFixed(2)}`; }
-        function criarGraficos() { const dias = []; const vendas = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0); dias.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })); const count = pedidosCache.filter(p => { const pd = new Date(p.data); pd.setHours(0, 0, 0, 0); return pd.getTime() === d.getTime(); }).length; vendas.push(count); } const ctxVendas = document.getElementById('vendasChart').getContext('2d'); if (vendasChart) vendasChart.destroy(); vendasChart = new Chart(ctxVendas, { type: 'line', data: { labels: dias, datasets: [{ label: 'Pedidos', data: vendas, borderColor: '#667eea', backgroundColor: 'rgba(102, 126, 234, 0.1)', tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } } }); const produtosCount = {}; pedidosCache.forEach(p => { const produtos = p.produto.split('\n'); produtos.forEach(prod => { const nome = prod.split('x ')[1]; if (nome) { produtosCount[nome] = (produtosCount[nome] || 0) + 1; } }); }); const top5 = Object.entries(produtosCount).sort((a, b) => b[1] - a[1]).slice(0, 5); const ctxProdutos = document.getElementById('produtosChart').getContext('2d'); if (produtosChart) produtosChart.destroy(); produtosChart = new Chart(ctxProdutos, { type: 'doughnut', data: { labels: top5.map(p => p[0]), datasets: [{ data: top5.map(p => p[1]), backgroundColor: ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea'] }] }, options: { responsive: true, maintainAspectRatio: true } }); }
-        toggleTheme = () => { document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); }
-        toggleNotif = () => { notifEnabled = !notifEnabled; document.getElementById('notifBtn').textContent = notifEnabled ? '🔔 ON' : '🔔 OFF'; }
-        mudarTab = (tab, e) => { document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); e.target.classList.add('active'); document.getElementById(tab).classList.add('active'); }
+        // Funções de stats e gráficos permanecem as mesmas
+        function calcularStats() { /* ...código sem alterações... */ }
+        function criarGraficos() { /* ...código sem alterações... */ }
         
         carregarDados();
         setInterval(carregarDados, 30000);
+
+        // Funções que não precisam de alteração (foram omitidas para brevidade, mas devem estar no seu código final)
+        toggleTheme = () => { document.body.setAttribute('data-theme', document.body.getAttribute('data-theme') === 'light' ? 'dark' : 'light'); }
+        toggleNotif = () => { notifEnabled = !notifEnabled; document.getElementById('notifBtn').textContent = notifEnabled ? '🔔 ON' : '🔔 OFF'; }
+        mudarTab = (tab, e) => { document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active')); document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active')); e.target.classList.add('active'); document.getElementById(tab).classList.add('active'); }
+        abrirModalPedido = (pedidoId) => { const pedido = pedidosCache.find(p => p.id === pedidoId); if (!pedido) return; document.getElementById('modalTitle').textContent = `Detalhes do Pedido #${pedido.id}`; document.getElementById('modalCliente').textContent = pedido.nome || 'Não identificado'; document.getElementById('modalTelefone').textContent = pedido.telefone || 'Não informado'; document.getElementById('modalEndereco').textContent = pedido.endereco || 'Não informado'; document.getElementById('modalProdutos').innerHTML = pedido.produto.replace(/\n/g, '<br>'); document.getElementById('modalTotal').textContent = `R$ ${(pedido.total || 0).toFixed(2)}`; document.getElementById('modalPagamento').textContent = `${pedido.formaPagamento} (Troco: ${pedido.troco})`; document.getElementById('statusSelect').value = pedido.status || 'Pendente'; document.getElementById('modalPedidoId').value = pedido.id; document.getElementById('pedidoModal').style.display = 'flex'; }
+        atualizarStatus = async () => { const pedidoId = document.getElementById('modalPedidoId').value; const novoStatus = document.getElementById('statusSelect').value; const btn = document.getElementById('btnSalvarStatus'); btn.textContent = 'Salvando...'; btn.disabled = true; try { const res = await fetch(`${API_URL}?action=updateStatus`, { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ id: pedidoId, status: novoStatus }) }); const result = await res.json(); if (result.success) { fecharModal('pedidoModal'); await carregarDados(); } else { alert('Erro ao atualizar o status: ' + (result.error || 'Erro desconhecido')); } } catch (error) { alert('Falha na comunicação com o servidor.'); console.error("Erro ao atualizar status: ", error); } finally { btn.textContent = 'Salvar'; btn.disabled = false; } }
+        calcularStats = () => { const hoje = new Date(); hoje.setHours(0, 0, 0, 0); const pedidosHoje = pedidosCache.filter(p => { const d = new Date(p.data); d.setHours(0, 0, 0, 0); return d.getTime() === hoje.getTime(); }); const total = pedidosHoje.reduce((sum, p) => sum + (p.total || 0), 0); const ticket = pedidosHoje.length > 0 ? total / pedidosHoje.length : 0; document.getElementById('pedidosHoje').textContent = pedidosHoje.length; document.getElementById('faturamentoHoje').textContent = `R$ ${total.toFixed(2)}`; document.getElementById('ticketMedio').textContent = `R$ ${ticket.toFixed(2)}`; }
+        criarGraficos = () => { const dias = []; const vendas = []; for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); d.setHours(0, 0, 0, 0); dias.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })); const count = pedidosCache.filter(p => { const pd = new Date(p.data); pd.setHours(0, 0, 0, 0); return pd.getTime() === d.getTime(); }).length; vendas.push(count); } const ctxVendas = document.getElementById('vendasChart').getContext('2d'); if (vendasChart) vendasChart.destroy(); vendasChart = new Chart(ctxVendas, { type: 'line', data: { labels: dias, datasets: [{ label: 'Pedidos', data: vendas, borderColor: '#667eea', backgroundColor: 'rgba(102, 126, 234, 0.1)', tension: 0.4 }] }, options: { responsive: true, maintainAspectRatio: true, plugins: { legend: { display: false } } } }); const produtosCount = {}; pedidosCache.forEach(p => { const produtos = p.produto.split('\n'); produtos.forEach(prod => { const nome = prod.split('x ')[1]; if (nome) { produtosCount[nome] = (produtosCount[nome] || 0) + 1; } }); }); const top5 = Object.entries(produtosCount).sort((a, b) => b[1] - a[1]).slice(0, 5); const ctxProdutos = document.getElementById('produtosChart').getContext('2d'); if (produtosChart) produtosChart.destroy(); produtosChart = new Chart(ctxProdutos, { type: 'doughnut', data: { labels: top5.map(p => p[0]), datasets: [{ data: top5.map(p => p[1]), backgroundColor: ['#667eea', '#48bb78', '#ed8936', '#f56565', '#9f7aea'] }] }, options: { responsive: true, maintainAspectRatio: true } }); }
+
     </script>
 </body>
 </html>
