@@ -15,6 +15,9 @@
             --success: #48bb78;
             --danger: #f56565;
             --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --warning: #ed8936;
+            --info: #4299e1;
+            --purple: #9f7aea;
         }
         
         [data-theme="dark"] {
@@ -148,15 +151,24 @@
             border-bottom: 1px solid #e2e8f0;
         }
         
+        tbody tr { cursor: pointer; transition: background-color 0.2s; }
+        tbody tr:hover { background-color: rgba(102, 126, 234, 0.1); }
+
         .status {
-            padding: 4px 8px;
+            padding: 4px 10px;
             border-radius: 12px;
             font-size: 11px;
             font-weight: bold;
+            text-align: center;
+            display: inline-block;
+            min-width: 80px;
         }
         
-        .status.pendente { background: #fff3cd; color: #856404; }
-        .status.concluido { background: #d4edda; color: #155724; }
+        .status.pendente { background: var(--warning); color: white; }
+        .status.concluido, .status.entregue { background: var(--success); color: white; }
+        .status.em.separação { background: var(--info); color: white; }
+        .status.aguardando.entregador { background: var(--purple); color: white; }
+        .status.a.caminho { background: var(--accent); color: white; }
         
         .refresh-btn {
             position: fixed;
@@ -186,6 +198,55 @@
         }
         
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* --- ESTILOS DO MODAL --- */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 2000;
+        }
+        .modal-content {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: 0 5px 25px rgba(0,0,0,0.3);
+            animation: slideUp 0.3s ease-out;
+        }
+        @keyframes slideUp { from { transform: translateY(30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .modal-header h2 { color: var(--accent); }
+        .modal-close-btn { font-size: 24px; cursor: pointer; background: none; border: none; color: var(--text-primary); }
+        .modal-body p { margin-bottom: 12px; line-height: 1.6; }
+        .modal-body strong { color: var(--accent); }
+        .modal-footer { margin-top: 25px; display: flex; gap: 10px; justify-content: flex-end; }
+        #statusSelect {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 15px;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-save { background: var(--success); color: white; }
+        .btn-cancel { background: #e2e8f0; color: var(--text-primary); }
+        /* --- FIM DOS ESTILOS DO MODAL --- */
         
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -237,10 +298,42 @@
         
         <button class="refresh-btn" onclick="carregarDados()">🔄</button>
     </div>
+
+    <div id="pedidoModal" class="modal-overlay" onclick="fecharModal(event)">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Detalhes do Pedido</h2>
+                <button class="modal-close-btn" onclick="fecharModal()">×</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Cliente:</strong> <span id="modalCliente"></span></p>
+                <p><strong>Telefone:</strong> <span id="modalTelefone"></span></p>
+                <p><strong>Endereço:</strong> <span id="modalEndereco"></span></p>
+                <p><strong>Produtos:</strong><br><span id="modalProdutos"></span></p>
+                <p><strong>Total:</strong> <span id="modalTotal"></span></p>
+                <p><strong>Pagamento:</strong> <span id="modalPagamento"></span></p>
+                <hr style="margin: 15px 0; border-color: #e2e8f0;">
+                <label for="statusSelect" style="font-weight: bold; margin-bottom: 8px; display: block;">Alterar Status:</label>
+                <select id="statusSelect">
+                    <option value="Pendente">Pendente</option>
+                    <option value="Em separação">Em separação</option>
+                    <option value="Aguardando entregador">Aguardando entregador</option>
+                    <option value="A caminho">A caminho</option>
+                    <option value="Entregue">Entregue</option>
+                </select>
+                <input type="hidden" id="modalPedidoId">
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn btn-cancel" onclick="fecharModal()">Cancelar</button>
+                <button class="modal-btn btn-save" id="btnSalvarStatus" onclick="atualizarStatus()">Salvar</button>
+            </div>
+        </div>
+    </div>
     
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbwCsySS22XfE-iDORPCsUvL7E6ykhgBV5AoAPE5lXfsB5XwVqv-08S1ttz4wOnJv6e-yg/exec';
         let pedidosCache = [];
+        let clientesCache = {}; // Cache para nomes de clientes
         let vendasChart, produtosChart;
         let notifEnabled = true;
         
@@ -271,6 +364,7 @@
             }
         }
         
+        // --- FUNÇÃO MODIFICADA ---
         async function carregarPedidos() {
             const res = await fetch(`${API_URL}?action=getPedidos&_t=${Date.now()}`);
             const data = await res.json();
@@ -281,14 +375,15 @@
                 return;
             }
             
-            let html = '<table><thead><tr><th>ID</th><th>Data</th><th>Produto</th><th>Total</th><th>Status</th></tr></thead><tbody>';
-            pedidosCache.slice().reverse().slice(0, 15).forEach(p => {
-                html += `<tr>
+            let html = '<table><thead><tr><th>ID</th><th>Cliente</th><th>Endereço</th><th>Total</th><th>Status</th></tr></thead><tbody>';
+            pedidosCache.slice().reverse().slice(0, 20).forEach(p => {
+                const statusClass = (p.status || 'pendente').toLowerCase().replace(' ', '.');
+                html += `<tr onclick="abrirModalPedido(${p.id})">
                     <td>#${p.id}</td>
-                    <td>${new Date(p.data).toLocaleString('pt-BR', {day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})}</td>
-                    <td>${p.produto}</td>
+                    <td>${p.nome || 'Não identificado'}</td>
+                    <td>${p.endereco || 'Não informado'}</td>
                     <td>R$ ${(p.total || 0).toFixed(2)}</td>
-                    <td><span class="status ${(p.status || 'pendente').toLowerCase()}">${p.status || 'Pendente'}</span></td>
+                    <td><span class="status ${statusClass}">${p.status || 'Pendente'}</span></td>
                 </tr>`;
             });
             html += '</tbody></table>';
@@ -314,7 +409,61 @@
             document.getElementById('tabelaEstoque').innerHTML = html;
             document.getElementById('produtosEstoque').textContent = produtos.length;
         }
-        
+
+        // --- NOVAS FUNÇÕES PARA O MODAL ---
+        function abrirModalPedido(pedidoId) {
+            const pedido = pedidosCache.find(p => p.id === pedidoId);
+            if (!pedido) return;
+
+            document.getElementById('modalTitle').textContent = `Detalhes do Pedido #${pedido.id}`;
+            document.getElementById('modalCliente').textContent = pedido.nome || 'Não identificado';
+            document.getElementById('modalTelefone').textContent = pedido.telefone || 'Não informado';
+            document.getElementById('modalEndereco').textContent = pedido.endereco || 'Não informado';
+            document.getElementById('modalProdutos').innerHTML = pedido.produto.replace(/\n/g, '<br>');
+            document.getElementById('modalTotal').textContent = `R$ ${(pedido.total || 0).toFixed(2)}`;
+            document.getElementById('modalPagamento').textContent = `${pedido.formaPagamento} (Troco: ${pedido.troco})`;
+            document.getElementById('statusSelect').value = pedido.status || 'Pendente';
+            document.getElementById('modalPedidoId').value = pedido.id;
+
+            document.getElementById('pedidoModal').style.display = 'flex';
+        }
+
+        function fecharModal(event) {
+            if (event && event.target !== document.getElementById('pedidoModal')) return;
+            document.getElementById('pedidoModal').style.display = 'none';
+        }
+
+        async function atualizarStatus() {
+            const pedidoId = document.getElementById('modalPedidoId').value;
+            const novoStatus = document.getElementById('statusSelect').value;
+            const btn = document.getElementById('btnSalvarStatus');
+            btn.textContent = 'Salvando...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch(`${API_URL}?action=updateStatus`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain' }, // Apps Script lida melhor com text/plain para POST simples
+                    body: JSON.stringify({ id: pedidoId, status: novoStatus })
+                });
+                const result = await res.json();
+
+                if (result.success) {
+                    document.getElementById('pedidoModal').style.display = 'none';
+                    await carregarDados(); // Recarrega os dados para mostrar o status atualizado
+                } else {
+                    alert('Erro ao atualizar o status: ' + (result.error || 'Erro desconhecido'));
+                }
+            } catch (error) {
+                alert('Falha na comunicação com o servidor.');
+                console.error("Erro ao atualizar status: ", error);
+            } finally {
+                btn.textContent = 'Salvar';
+                btn.disabled = false;
+            }
+        }
+        // --- FIM DAS NOVAS FUNÇÕES ---
+
         function calcularStats() {
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
@@ -367,7 +516,13 @@
             
             const produtosCount = {};
             pedidosCache.forEach(p => {
-                produtosCount[p.produto] = (produtosCount[p.produto] || 0) + 1;
+                const produtos = p.produto.split('\n');
+                produtos.forEach(prod => {
+                    const nome = prod.split('x ')[1]; // Pega o nome do produto
+                    if (nome) {
+                        produtosCount[nome] = (produtosCount[nome] || 0) + 1;
+                    }
+                });
             });
             const top5 = Object.entries(produtosCount).sort((a, b) => b[1] - a[1]).slice(0, 5);
             
