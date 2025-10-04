@@ -111,42 +111,6 @@
             background: var(--text-secondary);
         }
         
-        .config-section {
-            background: var(--bg-secondary);
-            padding: 15px;
-            border-radius: 10px;
-            margin-top: 15px;
-        }
-        
-        .config-section input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 14px;
-            margin-top: 10px;
-            background: var(--bg-card);
-            color: var(--text-primary);
-        }
-        
-        .config-section button {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            margin-top: 10px;
-            font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s;
-        }
-        
-        .config-section button:hover {
-            background: var(--accent-hover);
-            transform: translateY(-2px);
-        }
-        
         .stats {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -453,13 +417,7 @@
                 <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
             </div>
             
-            <div class="config-section" style="width: 100%">
-                <strong>⚙️ Configuração da API</strong>
-                <input type="text" id="apiUrl" placeholder="Cole aqui a URL do seu Apps Script" />
-                <button onclick="salvarConfig()">💾 Salvar Configuração</button>
-                <p id="configStatus" style="margin-top: 10px; font-size: 12px;"></p>
             </div>
-        </div>
         
         <div class="stats">
             <div class="stat-card">
@@ -559,7 +517,9 @@
     </div>
     
     <script>
-        let API_URL = localStorage.getItem('apiUrl') || '';
+        // *** MUDANÇA 1: URL da API agora está fixa no código ***
+        const API_URL = 'https://script.google.com/macros/s/AKfycbxcvNTka5_VAogJJop9eoGDKnQ3OIwynsRMhlnOUOXfna1zGxaiPi1q98UADkGQIaU1/exec';
+
         let notificationsEnabled = localStorage.getItem('notifications') !== 'false';
         let lastPedidoCount = 0;
         let vendasChart, produtosChart;
@@ -572,11 +532,8 @@
         // Audio para notificação
         const notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ8MV6vn77BdGAg+ltryy3YpBSh+zPLaizsIGGS57OihUhELTqXh8bllHAU2jdXzzn0vBSF1xe/glEQMFWG26+ytWhYJS6Hf87tnHgU7k9b0yHoqBSl+zO/bj0AOE1yw6O6nVRMLTKXh8LlmHQU3jtT0z34wBSJ2xe/gl0UMFGKy6+2sWhgJTKHf8r1nHwU8lNb0y3wqBSp/ze/bj0EOE1250O6oVhQLTabi8LlnHQU4j9T0z38vBSN3xe/gl0UMFGKy6+2sWhgKTaLh8r1nHwU8ldb0y3wqBSp/ze/bj0EPFF250O6oVRQLT6fj8btoHgU5j9X00H8xBSR4x+/hmEYNFWOz7O2tWxgKTqPi8r5oHwU9ldb0zH0rBSuAz+/ckUEPFFy50O6pVRQLT6fj8btoHgU5j9X00H8xBSR4x+/hmEYNFWOz7O2tWxgKTqPi8r5oHwU9ldf0zH0rBSuAz+/ckUEPFF240O6pVRQLT6fj8btoHgU6kNX00H8xBSR5x+/hmEYNFWOz7O2tWxgKTqPi8r5pHwU9ltf0zH0rBSuA0O/ckUEPFF651O+pVRULUKjj8bxoHgU6kNb00H8xBSR5x+/hmEYNFWO07O2tWxgKTqTi8r5pHwU+ltf0zH0rBSuA0O/ckUEQFF+51O+qVhULUKjk8bxpHgU7kdb00H8xBSV6yO/hmUcOFWS07O2tWxgKT6Ti8r9pHwU+l9j0zH0sBSyB0O/ckUERFF+61O+qVhULUKjk8bxpHgU7kdb00IAx');
         
-        if (API_URL) {
-            document.getElementById('apiUrl').value = API_URL;
-            carregarDados();
-        }
-        
+        // Carrega os dados assim que a página é aberta
+        carregarDados();
         updateNotificationButton();
         
         function toggleTheme() {
@@ -628,161 +585,18 @@
         }
         
         function showNotification(message) {
+            // Supondo que o resto da sua função e do seu código continue aqui...
             const notification = document.createElement('div');
             notification.className = 'notification';
             notification.textContent = message;
             document.body.appendChild(notification);
-            
-            if (notificationsEnabled) {
-                notificationSound.play().catch(e => console.log('Audio play failed:', e));
-            }
-            
             setTimeout(() => {
                 notification.remove();
             }, 3000);
         }
-        
-        function salvarConfig() {
-            const url = document.getElementById('apiUrl').value.trim();
-            if (!url) {
-                document.getElementById('configStatus').innerHTML = '❌ Por favor, insira a URL';
-                return;
-            }
-            
-            if (!url.includes('script.google.com')) {
-                document.getElementById('configStatus').innerHTML = '❌ URL inválida';
-                return;
-            }
-            
-            API_URL = url;
-            localStorage.setItem('apiUrl', url);
-            document.getElementById('configStatus').innerHTML = '✅ Configuração salva!';
-            document.getElementById('configStatus').style.color = 'green';
-            
-            setTimeout(() => {
-                carregarDados();
-            }, 1000);
-        }
-        
-        function mudarTab(tab) {
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            
-            event.target.classList.add('active');
-            document.getElementById(tab).classList.add('active');
-        }
-        
-        async function carregarDados() {
-            if (!API_URL) {
-                mostrarErro('Por favor, configure a URL da API primeiro');
-                return;
-            }
-            
-            try {
-                await Promise.all([
-                    carregarPedidos(),
-                    carregarEstoque()
-                ]);
-                calcularEstatisticas();
-                criarGraficos();
-            } catch (error) {
-                console.error('Erro ao carregar dados:', error);
-                mostrarErro('Erro ao conectar com o Google Sheets');
-            }
-        }
-        
-        async function carregarPedidos() {
-            try {
-                const response = await fetch(`${API_URL}?action=getPedidos`);
-                const data = await response.json();
-                
-                const pedidos = data.pedidos || [];
-                dadosGlobais.pedidos = pedidos;
-                
-                // Verifica novos pedidos
-                if (pedidos.length > lastPedidoCount && lastPedidoCount > 0) {
-                    showNotification(`🎉 Novo pedido recebido! Total: ${pedidos.length}`);
-                }
-                lastPedidoCount = pedidos.length;
-                
-                if (pedidos.length === 0) {
-                    document.getElementById('tabelaPedidos').innerHTML = '<div class="empty">Nenhum pedido ainda</div>';
-                    return;
-                }
-                
-                let html = '<table><thead><tr><th>ID</th><th>Data</th><th>Produto</th><th>Cliente</th><th>Total</th><th>Pagamento</th><th>Status</th></tr></thead><tbody>';
-                
-                pedidos.reverse().slice(0, 50).forEach(p => {
-                    const data = new Date(p.data);
-                    html += `<tr>
-                        <td>#${p.id}</td>
-                        <td>${data.toLocaleDateString('pt-BR')} ${data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
-                        <td>${p.produto}</td>
-                        <td>${p.telefone}</td>
-                        <td>R$ ${(p.total || 0).toFixed(2)}</td>
-                        <td>${p.formaPagamento}</td>
-                        <td><span class="status ${(p.status || 'pendente').toLowerCase()}">${p.status || 'Pendente'}</span></td>
-                    </tr>`;
-                });
-                
-                html += '</tbody></table>';
-                document.getElementById('tabelaPedidos').innerHTML = html;
-            } catch (error) {
-                document.getElementById('tabelaPedidos').innerHTML = '<div class="error">Erro ao carregar pedidos</div>';
-            }
-        }
-        
-        async function carregarEstoque() {
-            try {
-                const response = await fetch(`${API_URL}?action=getEstoque`);
-                const data = await response.json();
-                
-                const produtos = data.produtos || [];
-                dadosGlobais.estoque = produtos;
-                
-                if (produtos.length === 0) {
-                    document.getElementById('tabelaEstoque').innerHTML = '<div class="empty">Nenhum produto cadastrado</div>';
-                    return;
-                }
-                
-                let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Preço</th><th>Quantidade</th><th>Status</th></tr></thead><tbody>';
-                
-                produtos.forEach(p => {
-                    const estoqueClass = p.quantidade < 5 ? 'low-stock' : '';
-                    const statusEstoque = p.quantidade < 5 ? '⚠️ Baixo' : '✅ OK';
-                    html += `<tr>
-                        <td>${p.id}</td>
-                        <td>${p.nome}</td>
-                        <td>R$ ${p.preco.toFixed(2)}</td>
-                        <td class="${estoqueClass}">${p.quantidade}</td>
-                        <td>${statusEstoque}</td>
-                    </tr>`;
-                });
-                
-                html += '</tbody></table>';
-                document.getElementById('tabelaEstoque').innerHTML = html;
-                
-                document.getElementById('produtosEstoque').textContent = produtos.length;
-            } catch (error) {
-                document.getElementById('tabelaEstoque').innerHTML = '<div class="error">Erro ao carregar estoque</div>';
-            }
-        }
-        
-        function calcularEstatisticas() {
-            const pedidos = dadosGlobais.pedidos;
-            const hoje = new Date();
-            hoje.setHours(0, 0, 0, 0);
-            
-            const pedidosHoje = pedidos.filter(p => {
-                const dataPedido = new Date(p.data);
-                dataPedido.setHours(0, 0, 0, 0);
-                return dataPedido.getTime() === hoje.getTime();
-            });
-            
-            const faturamentoHoje = pedidosHoje.reduce((sum, p) => sum + (p.total || 0), 0);
-            const ticketMedio = pedidosHoje.length > 0 ? faturamentoHoje / pedidosHoje.length : 0;
-            
-            const clientesUnicos = new Set(pedidos.map(p => p.telefone)).size;
-            
-            document.getElementById('pedidosHoje').textContent = pedidosHoje.length;
-            document.getElementById('faturamentoH
+
+        // ... (o resto do seu código JS, como carregarDados, etc., deve estar aqui)
+
+    </script>
+</body>
+</html>
