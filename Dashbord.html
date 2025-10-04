@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Vendas Pro</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #f5f7fa;
+            --bg-secondary: white;
+            --bg-card: white;
+            --text-primary: #2d3748;
+            --text-secondary: #718096;
+            --border-color: #e2e8f0;
+            --accent: #667eea;
+            --accent-hover: #5568d3;
+            --success: #48bb78;
+            --warning: #ed8936;
+            --danger: #f56565;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        [data-theme="dark"] {
+            --bg-primary: #1a202c;
+            --bg-secondary: #2d3748;
+            --bg-card: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --border-color: #4a5568;
+            --shadow: 0 10px 30px rgba(0,0,0,0.5);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .header {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: var(--shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        
+        .header-left h1 {
+            color: var(--accent);
+            font-size: clamp(20px, 5vw, 28px);
+            margin-bottom: 5px;
+        }
+        
+        .header-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .theme-toggle {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            transition: all 0.3s;
+        }
+        
+        .theme-toggle:hover {
+            background: var(--accent-hover);
+            transform: scale(1.05);
+        }
+        
+        .notification-toggle {
+            background: var(--success);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .notification-toggle:hover {
+            transform: scale(1.05);
+        }
+        
+        .notification-toggle.off {
+            background: var(--text-secondary);
+        }
+        
+        .config-section {
+            background: var(--bg-secondary);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+        }
+        
+        .config-section input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            margin-top: 10px;
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+        
+        .config-section button {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 10px;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+        
+        .config-section button:hover {
+            background: var(--accent-hover);
+            transform: translateY(-2px);
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .stat-card {
+            background: var(--bg-card);
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .stat-card h3 {
+            color: var(--text-secondary);
+            font-size: 12px;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .stat-card .value {
+            font-size: clamp(24px, 5vw, 36px);
+            font-weight: bold;
+            color: var(--accent);
+        }
+        
+        .stat-card .change {
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        
+        .stat-card .change.positive {
+            color: var(--success);
+        }
+        
+        .stat-card .change.negative {
+            color: var(--danger);
+        }
+        
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .chart-card {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+        }
+        
+        .chart-card h3 {
+            margin-bottom: 15px;
+            color: var(--text-primary);
+        }
+        
+        .tabs {
+            background: var(--bg-card);
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: var(--shadow);
+        }
+        
+        .tab-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .tab-button {
+            padding: 12px 24px;
+            border: none;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s;
+            color: var(--text-primary);
+        }
+        
+        .tab-button.active {
+            background: var(--accent);
+            color: white;
+        }
+        
+        .tab-button:hover {
+            transform: translateY(-2px);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .table-container {
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            min-width: 600px;
+        }
+        
+        th {
+            background: var(--accent);
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: bold;
+            position: sticky;
+            top: 0;
+        }
+        
+        td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        tr:hover {
+            background: var(--bg-secondary);
+        }
+        
+        .status {
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+        }
+        
+        .status.pendente {
+            background: #fff3cd;
+            color: #856404;
+        }
+        
+        .status.concluido {
+            background: #d4edda;
+            color: #155724;
+        }
+        
+        .status.cancelado {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        
+        .refresh-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 15px 25px;
+            border-radius: 50px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        
+        .refresh-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.6);
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .spinner {
+            border: 3px solid var(--border-color);
+            border-top: 3px solid var(--accent);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: var(--danger);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        
+        .empty {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-secondary);
+        }
+        
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--success);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+            z-index: 10000;
+            animation: slideIn 0.3s;
+        }
+        
+        @keyframes slideIn {
+            from { transform: translateX(400px); }
+            to { transform: translateX(0); }
+        }
+        
+        .low-stock {
+            color: var(--danger);
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .stats {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .tab-buttons {
+                flex-direction: column;
+            }
+            
+            .tab-button {
+                width: 100%;
+            }
+            
+            .refresh-btn {
+                bottom: 15px;
+                right: 15px;
+                padding: 12px 20px;
+            }
+        }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="container">
+        <div class="header">
+            <div class="header-left">
+                <h1>📊 Dashboard de Vendas Pro</h1>
+                <p style="color: var(--text-secondary)">Gerencie seu negócio em tempo real</p>
+            </div>
+            <div class="header-right">
+                <button class="notification-toggle" id="notificationToggle" onclick="toggleNotifications()">
+                    🔔 ON
+                </button>
+                <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+            </div>
+            
+            <div class="config-section" style="width: 100%">
+                <strong>⚙️ Configuração da API</strong>
+                <input type="text" id="apiUrl" placeholder="Cole aqui a URL do seu Apps Script" />
+                <button onclick="salvarConfig()">💾 Salvar Configuração</button>
+                <p id="configStatus" style="margin-top: 10px; font-size: 12px;"></p>
+            </div>
+        </div>
+        
+        <div class="stats">
+            <div class="stat-card">
+                <h3>Pedidos Hoje</h3>
+                <div class="value" id="pedidosHoje">0</div>
+                <div class="change positive" id="pedidosChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Faturamento Hoje</h3>
+                <div class="value" id="faturamentoHoje">R$ 0</div>
+                <div class="change positive" id="faturamentoChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Ticket Médio</h3>
+                <div class="value" id="ticketMedio">R$ 0</div>
+                <div class="change" id="ticketChange">--</div>
+            </div>
+            <div class="stat-card">
+                <h3>Produtos em Estoque</h3>
+                <div class="value" id="produtosEstoque">0</div>
+                <div class="change" id="estoqueChange">--</div>
+            </div>
+            <div class="stat-card">
+                <h3>Taxa de Conversão</h3>
+                <div class="value" id="taxaConversao">0%</div>
+                <div class="change positive" id="conversaoChange">+0%</div>
+            </div>
+            <div class="stat-card">
+                <h3>Clientes Ativos</h3>
+                <div class="value" id="clientesAtivos">0</div>
+                <div class="change positive" id="clientesChange">+0</div>
+            </div>
+        </div>
+        
+        <div class="charts-section">
+            <div class="chart-card">
+                <h3>📈 Vendas dos Últimos 7 Dias</h3>
+                <canvas id="vendasChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3>🍕 Produtos Mais Vendidos</h3>
+                <canvas id="produtosChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="tabs">
+            <div class="tab-buttons">
+                <button class="tab-button active" onclick="mudarTab('pedidos')">📦 Pedidos</button>
+                <button class="tab-button" onclick="mudarTab('estoque')">📊 Estoque</button>
+                <button class="tab-button" onclick="mudarTab('clientes')">👥 Clientes</button>
+                <button class="tab-button" onclick="mudarTab('financeiro')">💰 Financeiro</button>
+            </div>
+            
+            <div id="pedidos" class="tab-content active">
+                <h2>Pedidos Recentes</h2>
+                <div class="table-container">
+                    <div id="tabelaPedidos">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Carregando pedidos...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="estoque" class="tab-content">
+                <h2>Controle de Estoque</h2>
+                <div class="table-container">
+                    <div id="tabelaEstoque">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <p>Carregando estoque...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="clientes" class="tab-content">
+                <h2>Base de Clientes</h2>
+                <div id="tabelaClientes">
+                    <div class="empty">📱 Visualize os clientes diretamente no Google Sheets</div>
+                </div>
+            </div>
+            
+            <div id="financeiro" class="tab-content">
+                <h2>Resumo Financeiro</h2>
+                <div id="resumoFinanceiro">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>Calculando...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="refresh-btn" onclick="carregarDados()">🔄 Atualizar</button>
+    </div>
+    
+    <script>
+        let API_URL = localStorage.getItem('apiUrl') || '';
+        let notificationsEnabled = localStorage.getItem('notifications') !== 'false';
+        let lastPedidoCount = 0;
+        let vendasChart, produtosChart;
+        let dadosGlobais = {
+            pedidos: [],
+            estoque: [],
+            estatisticas: {}
+        };
+        
+        // Audio para notificação
+        const notificationSound = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBTGH0fPTgjMGHm7A7+OZUQ8MV6vn77BdGAg+ltryy3YpBSh+zPLaizsIGGS57OihUhELTqXh8bllHAU2jdXzzn0vBSF1xe/glEQMFWG26+ytWhYJS6Hf87tnHgU7k9b0yHoqBSl+zO/bj0AOE1yw6O6nVRMLTKXh8LlmHQU3jtT0z34wBSJ2xe/gl0UMFGKy6+2sWhgJTKHf8r1nHwU8lNb0y3wqBSp/ze/bj0EOE1250O6oVhQLTabi8LlnHQU4j9T0z38vBSN3xe/gl0UMFGKy6+2sWhgKTaLh8r1nHwU8ldb0y3wqBSp/ze/bj0EPFF250O6oVRQLT6fj8btoHgU5j9X00H8xBSR4x+/hmEYNFWOz7O2tWxgKTqPi8r5oHwU9ldb0zH0rBSuAz+/ckUEPFFy50O6pVRQLT6fj8btoHgU5j9X00H8xBSR4x+/hmEYNFWOz7O2tWxgKTqPi8r5oHwU9ldf0zH0rBSuAz+/ckUEPFF240O6pVRQLT6fj8btoHgU6kNX00H8xBSR5x+/hmEYNFWOz7O2tWxgKTqPi8r5pHwU9ltf0zH0rBSuA0O/ckUEPFF651O+pVRULUKjj8bxoHgU6kNb00H8xBSR5x+/hmEYNFWO07O2tWxgKTqTi8r5pHwU+ltf0zH0rBSuA0O/ckUEQFF+51O+qVhULUKjk8bxpHgU7kdb00H8xBSV6yO/hmUcOFWS07O2tWxgKT6Ti8r9pHwU+l9j0zH0sBSyB0O/ckUERFF+61O+qVhULUKjk8bxpHgU7kdb00IAx');
+        
+        if (API_URL) {
+            document.getElementById('apiUrl').value = API_URL;
+            carregarDados();
+        }
+        
+        updateNotificationButton();
+        
+        function toggleTheme() {
+            const body = document.body;
+            const currentTheme = body.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', newTheme);
+            localStorage.setItem('theme', newTheme);
+            
+            // Atualiza gráficos
+            if (vendasChart) {
+                const textColor = newTheme === 'dark' ? '#e2e8f0' : '#2d3748';
+                vendasChart.options.scales.y.ticks.color = textColor;
+                vendasChart.options.scales.x.ticks.color = textColor;
+                vendasChart.update();
+            }
+            if (produtosChart) {
+                const textColor = newTheme === 'dark' ? '#e2e8f0' : '#2d3748';
+                produtosChart.options.plugins.legend.labels.color = textColor;
+                produtosChart.update();
+            }
+        }
+        
+        // Carrega tema salvo
+        const savedTheme = localStorage.getItem('theme');
+        if (savedTheme) {
+            document.body.setAttribute('data-theme', savedTheme);
+        }
+        
+        function toggleNotifications() {
+            notificationsEnabled = !notificationsEnabled;
+            localStorage.setItem('notifications', notificationsEnabled);
+            updateNotificationButton();
+            
+            if (notificationsEnabled) {
+                showNotification('🔔 Notificações ativadas!');
+            }
+        }
+        
+        function updateNotificationButton() {
+            const btn = document.getElementById('notificationToggle');
+            if (notificationsEnabled) {
+                btn.textContent = '🔔 ON';
+                btn.classList.remove('off');
+            } else {
+                btn.textContent = '🔔 OFF';
+                btn.classList.add('off');
+            }
+        }
+        
+        function showNotification(message) {
+            const notification = document.createElement('div');
+            notification.className = 'notification';
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            if (notificationsEnabled) {
+                notificationSound.play().catch(e => console.log('Audio play failed:', e));
+            }
+            
+            setTimeout(() => {
+                notification.remove();
+            }, 3000);
+        }
+        
+        function salvarConfig() {
+            const url = document.getElementById('apiUrl').value.trim();
+            if (!url) {
+                document.getElementById('configStatus').innerHTML = '❌ Por favor, insira a URL';
+                return;
+            }
+            
+            if (!url.includes('script.google.com')) {
+                document.getElementById('configStatus').innerHTML = '❌ URL inválida';
+                return;
+            }
+            
+            API_URL = url;
+            localStorage.setItem('apiUrl', url);
+            document.getElementById('configStatus').innerHTML = '✅ Configuração salva!';
+            document.getElementById('configStatus').style.color = 'green';
+            
+            setTimeout(() => {
+                carregarDados();
+            }, 1000);
+        }
+        
+        function mudarTab(tab) {
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            event.target.classList.add('active');
+            document.getElementById(tab).classList.add('active');
+        }
+        
+        async function carregarDados() {
+            if (!API_URL) {
+                mostrarErro('Por favor, configure a URL da API primeiro');
+                return;
+            }
+            
+            try {
+                await Promise.all([
+                    carregarPedidos(),
+                    carregarEstoque()
+                ]);
+                calcularEstatisticas();
+                criarGraficos();
+            } catch (error) {
+                console.error('Erro ao carregar dados:', error);
+                mostrarErro('Erro ao conectar com o Google Sheets');
+            }
+        }
+        
+        async function carregarPedidos() {
+            try {
+                const response = await fetch(`${API_URL}?action=getPedidos`);
+                const data = await response.json();
+                
+                const pedidos = data.pedidos || [];
+                dadosGlobais.pedidos = pedidos;
+                
+                // Verifica novos pedidos
+                if (pedidos.length > lastPedidoCount && lastPedidoCount > 0) {
+                    showNotification(`🎉 Novo pedido recebido! Total: ${pedidos.length}`);
+                }
+                lastPedidoCount = pedidos.length;
+                
+                if (pedidos.length === 0) {
+                    document.getElementById('tabelaPedidos').innerHTML = '<div class="empty">Nenhum pedido ainda</div>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>ID</th><th>Data</th><th>Produto</th><th>Cliente</th><th>Total</th><th>Pagamento</th><th>Status</th></tr></thead><tbody>';
+                
+                pedidos.reverse().slice(0, 50).forEach(p => {
+                    const data = new Date(p.data);
+                    html += `<tr>
+                        <td>#${p.id}</td>
+                        <td>${data.toLocaleDateString('pt-BR')} ${data.toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
+                        <td>${p.produto}</td>
+                        <td>${p.telefone}</td>
+                        <td>R$ ${(p.total || 0).toFixed(2)}</td>
+                        <td>${p.formaPagamento}</td>
+                        <td><span class="status ${(p.status || 'pendente').toLowerCase()}">${p.status || 'Pendente'}</span></td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('tabelaPedidos').innerHTML = html;
+            } catch (error) {
+                document.getElementById('tabelaPedidos').innerHTML = '<div class="error">Erro ao carregar pedidos</div>';
+            }
+        }
+        
+        async function carregarEstoque() {
+            try {
+                const response = await fetch(`${API_URL}?action=getEstoque`);
+                const data = await response.json();
+                
+                const produtos = data.produtos || [];
+                dadosGlobais.estoque = produtos;
+                
+                if (produtos.length === 0) {
+                    document.getElementById('tabelaEstoque').innerHTML = '<div class="empty">Nenhum produto cadastrado</div>';
+                    return;
+                }
+                
+                let html = '<table><thead><tr><th>ID</th><th>Produto</th><th>Preço</th><th>Quantidade</th><th>Status</th></tr></thead><tbody>';
+                
+                produtos.forEach(p => {
+                    const estoqueClass = p.quantidade < 5 ? 'low-stock' : '';
+                    const statusEstoque = p.quantidade < 5 ? '⚠️ Baixo' : '✅ OK';
+                    html += `<tr>
+                        <td>${p.id}</td>
+                        <td>${p.nome}</td>
+                        <td>R$ ${p.preco.toFixed(2)}</td>
+                        <td class="${estoqueClass}">${p.quantidade}</td>
+                        <td>${statusEstoque}</td>
+                    </tr>`;
+                });
+                
+                html += '</tbody></table>';
+                document.getElementById('tabelaEstoque').innerHTML = html;
+                
+                document.getElementById('produtosEstoque').textContent = produtos.length;
+            } catch (error) {
+                document.getElementById('tabelaEstoque').innerHTML = '<div class="error">Erro ao carregar estoque</div>';
+            }
+        }
+        
+        function calcularEstatisticas() {
+            const pedidos = dadosGlobais.pedidos;
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            
+            const pedidosHoje = pedidos.filter(p => {
+                const dataPedido = new Date(p.data);
+                dataPedido.setHours(0, 0, 0, 0);
+                return dataPedido.getTime() === hoje.getTime();
+            });
+            
+            const faturamentoHoje = pedidosHoje.reduce((sum, p) => sum + (p.total || 0), 0);
+            const ticketMedio = pedidosHoje.length > 0 ? faturamentoHoje / pedidosHoje.length : 0;
+            
+            const clientesUnicos = new Set(pedidos.map(p => p.telefone)).size;
+            
+            document.getElementById('pedidosHoje').textContent = pedidosHoje.length;
+            document.getElementById('faturamentoH
