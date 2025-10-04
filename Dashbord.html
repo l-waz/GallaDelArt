@@ -113,6 +113,7 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: var(--shadow);
+            margin-bottom: 20px; /* Adicionado para separar do conteúdo abaixo */
         }
         
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -266,19 +267,7 @@
                 <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
             </div>
         </div>
-        
-        <div class="stats">
-            <div class="stat-card"><h3>Pedidos Hoje</h3><div class="value" id="pedidosHoje">0</div></div>
-            <div class="stat-card"><h3>Faturamento</h3><div class="value" id="faturamentoHoje">R$ 0</div></div>
-            <div class="stat-card"><h3>Ticket Médio</h3><div class="value" id="ticketMedio">R$ 0</div></div>
-            <div class="stat-card"><h3>Estoque</h3><div class="value" id="produtosEstoque">0</div></div>
-        </div>
-        
-        <div class="charts-section">
-            <div class="chart-card"><h3>Vendas 7 Dias</h3><canvas id="vendasChart"></canvas></div>
-            <div class="chart-card"><h3>Top Produtos</h3><canvas id="produtosChart"></canvas></div>
-        </div>
-        
+
         <div class="tabs">
             <div class="tab-buttons">
                 <button class="tab-button active" onclick="mudarTab('pedidos', event)">Pedidos</button>
@@ -294,6 +283,17 @@
                 <h2>Controle de Estoque</h2>
                 <div id="tabelaEstoque"><div class="loading"><div class="spinner"></div><p>Carregando...</p></div></div>
             </div>
+        </div>
+        <div class="stats">
+            <div class="stat-card"><h3>Pedidos Hoje</h3><div class="value" id="pedidosHoje">0</div></div>
+            <div class="stat-card"><h3>Faturamento</h3><div class="value" id="faturamentoHoje">R$ 0</div></div>
+            <div class="stat-card"><h3>Ticket Médio</h3><div class="value" id="ticketMedio">R$ 0</div></div>
+            <div class="stat-card"><h3>Estoque</h3><div class="value" id="produtosEstoque">0</div></div>
+        </div>
+        
+        <div class="charts-section">
+            <div class="chart-card"><h3>Vendas 7 Dias</h3><canvas id="vendasChart"></canvas></div>
+            <div class="chart-card"><h3>Top Produtos</h3><canvas id="produtosChart"></canvas></div>
         </div>
         
         <button class="refresh-btn" onclick="carregarDados()">🔄</button>
@@ -333,7 +333,7 @@
     <script>
         const API_URL = 'https://script.google.com/macros/s/AKfycbwsu486MpwqY3sy1CDjPlWbH_WFXLSsSvJ10sadSFBxHq-pzx_8t5i5Ch0csVlQuyXFoQ/exec';
         let pedidosCache = [];
-        let clientesCache = {}; // Cache para nomes de clientes
+        let clientesCache = {}; 
         let vendasChart, produtosChart;
         let notifEnabled = true;
         
@@ -364,7 +364,6 @@
             }
         }
         
-        // --- FUNÇÃO MODIFICADA ---
         async function carregarPedidos() {
             const res = await fetch(`${API_URL}?action=getPedidos&_t=${Date.now()}`);
             const data = await res.json();
@@ -377,7 +376,7 @@
             
             let html = '<table><thead><tr><th>ID</th><th>Cliente</th><th>Endereço</th><th>Total</th><th>Status</th></tr></thead><tbody>';
             pedidosCache.slice().reverse().slice(0, 20).forEach(p => {
-                const statusClass = (p.status || 'pendente').toLowerCase().replace(' ', '.');
+                const statusClass = (p.status || 'pendente').toLowerCase().replace(/ /g, '.');
                 html += `<tr onclick="abrirModalPedido(${p.id})">
                     <td>#${p.id}</td>
                     <td>${p.nome || 'Não identificado'}</td>
@@ -409,8 +408,7 @@
             document.getElementById('tabelaEstoque').innerHTML = html;
             document.getElementById('produtosEstoque').textContent = produtos.length;
         }
-
-        // --- NOVAS FUNÇÕES PARA O MODAL ---
+        
         function abrirModalPedido(pedidoId) {
             const pedido = pedidosCache.find(p => p.id === pedidoId);
             if (!pedido) return;
@@ -429,8 +427,14 @@
         }
 
         function fecharModal(event) {
-            if (event && event.target !== document.getElementById('pedidoModal')) return;
-            document.getElementById('pedidoModal').style.display = 'none';
+            // Se o clique foi no overlay (fundo) e não no conteúdo do modal
+            if (event && event.target.id === 'pedidoModal') {
+                document.getElementById('pedidoModal').style.display = 'none';
+            }
+            // Se o clique foi no botão de fechar (sem evento)
+            if (!event) {
+                document.getElementById('pedidoModal').style.display = 'none';
+            }
         }
 
         async function atualizarStatus() {
@@ -443,14 +447,14 @@
             try {
                 const res = await fetch(`${API_URL}?action=updateStatus`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'text/plain' }, // Apps Script lida melhor com text/plain para POST simples
+                    headers: { 'Content-Type': 'text/plain' },
                     body: JSON.stringify({ id: pedidoId, status: novoStatus })
                 });
                 const result = await res.json();
 
                 if (result.success) {
-                    document.getElementById('pedidoModal').style.display = 'none';
-                    await carregarDados(); // Recarrega os dados para mostrar o status atualizado
+                    fecharModal();
+                    await carregarDados(); 
                 } else {
                     alert('Erro ao atualizar o status: ' + (result.error || 'Erro desconhecido'));
                 }
@@ -462,8 +466,7 @@
                 btn.disabled = false;
             }
         }
-        // --- FIM DAS NOVAS FUNÇÕES ---
-
+        
         function calcularStats() {
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
@@ -518,7 +521,7 @@
             pedidosCache.forEach(p => {
                 const produtos = p.produto.split('\n');
                 produtos.forEach(prod => {
-                    const nome = prod.split('x ')[1]; // Pega o nome do produto
+                    const nome = prod.split('x ')[1]; 
                     if (nome) {
                         produtosCount[nome] = (produtosCount[nome] || 0) + 1;
                     }
