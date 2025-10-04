@@ -113,7 +113,7 @@
             padding: 20px;
             border-radius: 12px;
             box-shadow: var(--shadow);
-            margin-bottom: 20px; /* Adicionado para separar do conteúdo abaixo */
+            margin-bottom: 20px; 
         }
         
         .tab-buttons { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
@@ -143,12 +143,12 @@
         th {
             background: var(--accent);
             color: white;
-            padding: 10px;
+            padding: 12px 10px;
             text-align: left;
         }
         
         td {
-            padding: 10px;
+            padding: 12px 10px;
             border-bottom: 1px solid #e2e8f0;
         }
         
@@ -166,10 +166,10 @@
         }
         
         .status.pendente { background: var(--warning); color: white; }
-        .status.concluido, .status.entregue { background: var(--success); color: white; }
-        .status.em.separação { background: var(--info); color: white; }
-        .status.aguardando.entregador { background: var(--purple); color: white; }
-        .status.a.caminho { background: var(--accent); color: white; }
+        .status.entregue { background: var(--success); color: white; }
+        .status.em\.separação { background: var(--info); color: white; }
+        .status.aguardando\.entregador { background: var(--purple); color: white; }
+        .status.a\.caminho { background: var(--accent); color: white; }
         
         .refresh-btn {
             position: fixed;
@@ -200,7 +200,6 @@
         
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
-        /* --- ESTILOS DO MODAL --- */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -247,7 +246,6 @@
         }
         .btn-save { background: var(--success); color: white; }
         .btn-cancel { background: #e2e8f0; color: var(--text-primary); }
-        /* --- FIM DOS ESTILOS DO MODAL --- */
         
         @media (max-width: 768px) {
             body { padding: 10px; }
@@ -284,6 +282,7 @@
                 <div id="tabelaEstoque"><div class="loading"><div class="spinner"></div><p>Carregando...</p></div></div>
             </div>
         </div>
+        
         <div class="stats">
             <div class="stat-card"><h3>Pedidos Hoje</h3><div class="value" id="pedidosHoje">0</div></div>
             <div class="stat-card"><h3>Faturamento</h3><div class="value" id="faturamentoHoje">R$ 0</div></div>
@@ -364,6 +363,7 @@
             }
         }
         
+        // --- FUNÇÃO MODIFICADA ---
         async function carregarPedidos() {
             const res = await fetch(`${API_URL}?action=getPedidos&_t=${Date.now()}`);
             const data = await res.json();
@@ -374,11 +374,14 @@
                 return;
             }
             
-            let html = '<table><thead><tr><th>ID</th><th>Cliente</th><th>Endereço</th><th>Total</th><th>Status</th></tr></thead><tbody>';
+            // Adicionado "Horário" ao cabeçalho da tabela
+            let html = '<table><thead><tr><th>ID</th><th>Horário</th><th>Cliente</th><th>Endereço</th><th>Total</th><th>Status</th></tr></thead><tbody>';
             pedidosCache.slice().reverse().slice(0, 20).forEach(p => {
                 const statusClass = (p.status || 'pendente').toLowerCase().replace(/ /g, '.');
+                // Adicionada a nova célula (td) com o horário formatado
                 html += `<tr onclick="abrirModalPedido(${p.id})">
                     <td>#${p.id}</td>
+                    <td>${new Date(p.data).toLocaleTimeString('pt-BR', {hour: '2-digit', minute: '2-digit'})}</td>
                     <td>${p.nome || 'Não identificado'}</td>
                     <td>${p.endereco || 'Não informado'}</td>
                     <td>R$ ${(p.total || 0).toFixed(2)}</td>
@@ -427,11 +430,9 @@
         }
 
         function fecharModal(event) {
-            // Se o clique foi no overlay (fundo) e não no conteúdo do modal
             if (event && event.target.id === 'pedidoModal') {
                 document.getElementById('pedidoModal').style.display = 'none';
             }
-            // Se o clique foi no botão de fechar (sem evento)
             if (!event) {
                 document.getElementById('pedidoModal').style.display = 'none';
             }
